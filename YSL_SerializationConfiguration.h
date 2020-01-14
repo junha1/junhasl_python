@@ -16,7 +16,9 @@
 #define YSLSC_BYTES ('b')
 
 #define YSLSC_LIST ('[')
-#define YSLSC_TUPLE ('(')
 #define YSLSC_DICT ('{')
 #define YSLSC_SET ('<')
 #define YSLSC_OPT ('@')
+
+#define YSLSC_TUPLE ('(')
+#define YSLSC_VARIANT ('+')

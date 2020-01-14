@@ -14,6 +14,7 @@ uint ysl::header_size(hpos_safe p, uint step)
 		p += keysize;
 		return 1 + keysize + header_size(p);
 	}
+	if (type == YSLSC_OPT) return 1 + header_size(p);
 	if (type == YSLSC_TUPLE)
 	{
 		auto n = p.read_size();
@@ -24,7 +25,16 @@ uint ysl::header_size(hpos_safe p, uint step)
 		}
 		return 1 + n.second + size;
 	}
-	if (type == YSLSC_OPT) return 1 + header_size(p);
+	if (type == YSLSC_VARIANT)
+	{
+		auto n = p.read_size();
+		size_t size = 0;
+		for (size_t i = 0; i < n.first; i++)
+		{
+			size += header_size(p + size);
+		}
+		return 1 + n.second + size;
+	}
 	else throw hpos_safe::ill_formed();
 }
 

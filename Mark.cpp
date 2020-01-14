@@ -15,16 +15,18 @@ ysl::FirstType ysl::get_type(PyObject* x)
 		return YSLSC_DICT;
 	else if (PySet_Check(x))
 		return YSLSC_SET;
+	else if (x == Py_None)
+		return YSLSC_OPT;
 	else if (PyTuple_CheckExact(x))
 		return YSLSC_TUPLE;
 	else if (PyUnicode_CheckExact(x))
 		return YSLSC_STRING;
 	else if (PyBytes_CheckExact(x))
 		return YSLSC_BYTES;
-	else if (x == Py_None)
-		return YSLSC_OPT;
 	else
 		throw ESerialization<void>();
+
+	// There is no variant support : use explicit conversion
 }
 
 /*
@@ -32,7 +34,7 @@ Python side's dump is only process which lacks of type. (C++'s dump and load, Py
 Thus, there are special conditions.
 
 1. Implicit conversion:
-If you put raw python object on dumps, then following rules will be applied
+If you put a raw python object on dumps, then following rules hold.
 - All python int objects will be casted into 'int'.
 - All python float objects will be casted into 'float'.
 - Empty homogeneous types are not supported.

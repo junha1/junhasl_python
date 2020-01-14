@@ -104,16 +104,6 @@ void ysl::to_raw_data(hpos_safe& t, TChunkList<uchar>& p, PyObject* x)
 		t += header_size(t);
 		break;
 	}
-	case YSLSC_TUPLE:
-	{
-		size_t n = PyTuple_Size(x);
-		auto [n_test, nouse] = t.read_size();
-		if (n!= n_test) throw ESerialization<void>();
-
-		for (int i = 0; i < n; i++)
-			to_raw_data(t, p, PyTuple_GetItem(x, i));
-		break;
-	}
 	case YSLSC_OPT:
 	{
 		if (x == Py_None)
@@ -126,6 +116,36 @@ void ysl::to_raw_data(hpos_safe& t, TChunkList<uchar>& p, PyObject* x)
 		to_raw_data(t, p, x);
 		break;
 	}
+
+
+	case YSLSC_TUPLE:
+	{
+		size_t n = PyTuple_Size(x);
+		auto [n_test, nouse] = t.read_size();
+		if (n != n_test) throw ESerialization<void>();
+
+		for (int i = 0; i < n; i++)
+			to_raw_data(t, p, PyTuple_GetItem(x, i));
+		break;
+	}
+	case YSLSC_VARIANT:
+	{
+		if(PyTuple_Size(x) != 2) throw ESerialization<void>();
+		auto [n, nouse] = t.read_size();
+		uchar index = PyLong_AsLong(PyTuple_GetItem(x, 0));
+		if (index < 0 || index >= n) throw ESerialization<void>();
+		for (int i = 0; i < n; i++)
+		{
+			if (i == index)
+			{
+				to_raw_data(t, p, PyTuple_GetItem(x, 1));
+			}
+			else t += header_size(t);
+		}
+		break;
+	}
+
+
 	case YSLSC_STRING:
 	{
 		__int64 n;
@@ -237,14 +257,6 @@ PyObject* ysl::from_raw_data(hpos_safe& t, hpos_safe& p)
 		t += header_size(t);
 		return l;
 	}
-	case YSLSC_TUPLE:
-	{
-		size_t n = t.read_size().first;
-		auto tp = PyTuple_New(n);
-		for (int i = 0; i < n; i++)
-			PyTuple_SetItem(tp, i, from_raw_data(t, p));
-		return tp;
-	}
 	case YSLSC_OPT:
 	{
 		uchar exist = p.read<uchar>();
@@ -259,6 +271,34 @@ PyObject* ysl::from_raw_data(hpos_safe& t, hpos_safe& p)
 			return Py_None;
 		}
 	}
+	case YSLSC_TUPLE:
+	{
+		size_t n = t.read_size().first;
+		auto tp = PyTuple_New(n);
+		for (int i = 0; i < n; i++)
+			PyTuple_SetItem(tp, i, from_raw_data(t, p));
+		return tp;
+	}
+	case YSLSC_VARIANT:
+	{
+		size_t n = t.read_size().first;
+		uchar index = p.read<uchar>();
+
+		PyObject* Result;
+		for (int i = 0; i < n; i++)
+		{
+			if (i == index)
+			{
+				Result = from_raw_data(t, p);
+			}
+			else t += header_size(t);
+		}
+		for (int i = 0; i < n; i++)
+			PyTuple_SetItem(tp, i, from_raw_data(t, p));
+		return Result;
+	}
+
+
 	case YSLSC_STRING:
 	{
 		size_t n = p.read<size_t>();
